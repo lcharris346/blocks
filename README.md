@@ -1,2 +1,4 @@
-# blocks
-Blocks game
+# tetris.py
+usag: TBD
+
+help: TBD

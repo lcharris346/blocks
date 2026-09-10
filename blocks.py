@@ -3,72 +3,12 @@ import random
 import copy
 import argparse
 import time
-import os
-import sys
 from datetime import datetime
-import sys
+import msvcrt
 
 ########### UTILS ##################
-if os.name == "nt":
-    import msvcrt
-    CLEAR = "cls"
-    def getch(mode):
-        
-        key_char = "x"
-        # Check if a keypress is waiting in the buffer
-        while 1:
-            if msvcrt.kbhit():
-                # Read the key character (returns a byte string like b'a')
-                key = msvcrt.getch()
-                
-                # Decode bytes to a string
-                key_char = key.decode('utf-8', errors='ignore')
-                #print(f"INFO. You pressed: {key_char} (Raw: {key})")
-                break
-            if mode == True:
-                break
-
-        return key_char.lower()
-else:
-    import tty
-    import termios
-    CLEAR = "clear"
-    print("WARNING. Executing in step mode")
-    def getch(mode):
-        ch = "x"
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
-ALL_COORDS = [ [-1,1], [0,1], [1,1], 
-               [-1,0], [0,0], [1,0], 
-               [-1,-1], [0,-1], [1,-1]]
-
-ROTATE_CW = {
-    (0,0):(0,0),
-
-    ( 0, 1):( 1, 0),
-    ( 1, 0):( 0,-1),
-    ( 0,-1):(-1, 0),
-    (-1, 0):( 0, 1),
-
-    ( 1, 1):( 1,-1),
-    ( 1,-1):(-1,-1),
-    (-1,-1):(-1, 1),
-    (-1, 1):( 1, 1),
-
-    ( 0, 2):( 2, 0),
-    ( 2, 0):( 0,-2),
-    ( 0,-2):(-2, 0),
-    (-2, 0):( 0, 2)
-}
-ROTATE_CCW = {ROTATE_CW[key]:key for key in ROTATE_CW.keys()}
-
+# Constants
+INSTRUCTIONS = "a:left,d:right,w:drop,x:down,k:cw,l OR s:cw,"
 LTTR_COORD = {
     "I":[[ 0,1], [0,0], [0,-1], [ 0,-2]],
     "J":[[ 0,1], [0,0], [0,-1], [-1,-1]],
@@ -77,18 +17,67 @@ LTTR_COORD = {
     "Z":[[-1,1], [0,0], [0, 1], [ 1, 0]],
     "O":[[ 1,0], [0,0], [0, 1], [ 1, 1]],
     "T":[[-1,0], [0,0], [1, 0], [ 0, 1]],
-    "h":[[-1,-1],[1,-1],[1, 0], [-1,0]],
-    "r":[[-1,-1],[0,-1],[1, 0], [ 1,1]],
-    "m":[[-1,0],[0, 1],[1,  1], [ 1,0]],
-    "y":[[-1,-1], [0,0],[1,-1],[0,1]]
 }
-
-LTTR_COORD_KEYS = list(LTTR_COORD.keys())
 NORM_LTTR_COORD_KEYS = "IJLSZOT"
-
 CARD = {
-    "n": [0,1], "s": [0, -1],"e": [1,0], "w": [-1,0],
+    "up": [0,1], "down": [0, -1],"right": [1,0], "left": [-1,0],
 }
+SPACE = "."
+N_SPACES = 10
+RANGE_SPACES = range(N_SPACES)
+ROW = [SPACE for x in RANGE_SPACES]
+BLOCK = "O"
+N_ROWS = 20
+MATRIX = [copy.deepcopy(ROW) for x in range(N_ROWS)]
+RANGE_ROWS = range(N_ROWS)
+KEYS_TRANSLATIONS = {
+    "a": "left",
+    "d": "right",
+    "e": "up",
+    "w": "down",
+    "x": "down",
+}
+KEYS_ROTATIONS = {
+    "l": "ccw",
+    "k": "cw",
+    "s": "cw",
+}
+# Functions
+
+def unit_rotation_cw(xy):
+
+    orig_x = xy[0]
+    orig_y = xy[1]
+    new_x = orig_y
+    new_y = -1*orig_x
+
+    return (new_x, new_y)
+
+def unit_rotation_ccw(xy):
+
+    orig_x = xy[0]
+    orig_y = xy[1]
+    new_x = -1*orig_y
+    new_y = orig_x
+
+    return (new_x, new_y)
+
+def getch():
+    key_char = "x"
+    # Check if a keypress is waiting in the buffer
+    while 1:
+        if msvcrt.kbhit():
+            # Read the key character (returns a byte string like b'a')
+            key = msvcrt.getch()
+            
+            # Decode bytes to a string
+            key_char = key.decode('utf-8', errors='ignore')
+            #print(f"INFO. You pressed: {key_char} (Raw: {key})")
+            break
+
+    return key_char.lower()
+
+# Classes
 class Shape(object):
 
     def __init__(self, rel_coords):
@@ -103,72 +92,22 @@ class Shape(object):
             self.coords[ii][0] = self.ctr[0] + self.rel_coords[ii][0]
             self.coords[ii][1] = self.ctr[1] + self.rel_coords[ii][1]
 
-        #print("DEBUG: coords", self.coords)
-
     def rotate(self, _dir):
         if _dir == "cw":
             for ii, rel_coord in enumerate(self.rel_coords):
-                key = tuple(self.rel_coords[ii])
-                self.rel_coords[ii] = (ROTATE_CW[key][0], ROTATE_CW[key][1])
+                self.rel_coords[ii] = unit_rotation_cw(self.rel_coords[ii])
         elif _dir == "ccw":
             for ii, rel_coord in enumerate(self.rel_coords):
-                key = tuple(self.rel_coords[ii])
-                self.rel_coords[ii] = (ROTATE_CCW[key][0], ROTATE_CCW[key][1])
-
-        #print ("DEBUG: rel_coords", self.rel_coords)
+                self.rel_coords[ii] = unit_rotation_ccw(self.rel_coords[ii])
 
         self.update_coords()
 
     def translate(self, card):
-        if card in ("w", "s", "e", "n"):
+        if card in KEYS_TRANSLATIONS.values():
             self.ctr[0] += CARD[card][0]
             self.ctr[1] += CARD[card][1]
 
-        #print ("DEBUG: ctr", self.ctr)
-
         self.update_coords()
-
-
-
-# Constants
-OUTPUT = open("sample.txt").readlines()
-SPACE = "."
-N_SPACES = 10
-RANGE_SPACES = range(N_SPACES)
-ROW = [SPACE for x in RANGE_SPACES]
-
-
-BLOCK = "O"
-N_ROWS = 20
-MATRIX = [copy.deepcopy(ROW) for x in range(N_ROWS)]
-
-RANGE_ROWS = range(N_ROWS)
-
-KEYS_TRANSLATIONS = {
-    "a": "w",
-    "d": "e",
-    "n": "n",
-    "w": "s",
-    "x": "s",
-}
-
-KEYS_ROTATIONS = {
-    "s": "ccw",
-    "k": "ccw",
-    "l": "cw",
-}
-
-# Functions
-def my_decorator(func):
-    def wrapper(statement):
-        choice = random.choice(range(len(OUTPUT)))
-        line = str(statement).replace("'","").replace(",","") +" "+ OUTPUT[choice].rstrip("\n")
-        func(line)
-    return wrapper
-
-@my_decorator
-def my_print(statement):
-    print(statement)
 
 class MatrixRows(object):
     def __init__(self):
@@ -180,91 +119,30 @@ class MatrixRows(object):
     def update_coords(self, new_coords):
         self.coords += new_coords
 
-
-######################################## CLASSES  ########################################
+######################################## MAIN CLASS  ########################################
 class Blocks(object):
+    
     def __init__(self, args):
-        self.automate = args.automate
-        self.verbose = args.verbose
-        self.shapes_type = args.shapes_type
-        self.level = args.level
-        self.mode = args.mode
         self.matrix = copy.deepcopy(MATRIX)
         self.rows = MatrixRows()
         self.complete_row = []
         self.score = 0
-        if self.shapes_type == "r":
-            self.next_letter = "R" 
-        elif self.shapes_type == "a":
-            self.next_letter = random.choice(LTTR_COORD_KEYS)
-        else:
-            self.next_letter = random.choice(NORM_LTTR_COORD_KEYS)
-        self.get_new_shape()
-        self.update_matrix()
-
-    def update_matrix(self):
-        self.matrix = copy.deepcopy(MATRIX)
-            
-        for coord in self.shape.coords:
-            #print("DEBUG: t coords", coord)
-            x = coord[0]
-            y = coord[1]
-            if x in RANGE_SPACES and y in RANGE_ROWS:
-                self.matrix[y][x] = "O"
-
-        for coord in self.rows.coords:
-            #print("DEBUG: row coord", coord)
-            x = coord[0]
-            y = coord[1]
-
-            if x in RANGE_SPACES and y in RANGE_ROWS:
-                self.matrix[y][x] = "H"
-
-        for coord in self.complete_row:
-            #print("DEBUG: row coord", coord)
-            x = coord[0]
-            y = coord[1]
-            if x in RANGE_SPACES and y in RANGE_ROWS:
-                self.matrix[y][x] = "+"
-            
+        self.next_letter = random.choice(NORM_LTTR_COORD_KEYS)
         
-        self.print_matrix()
-        
-    def print_matrix(self):
-        #os.system("cls" if os.name == "nt" else "clear")
-        print("\n")
-        for y in range(N_ROWS):
-            row_str ="                " +  "".join(self.matrix[N_ROWS - 1 - y])
-            print(row_str)
-        #mprint(" ----------")
+    def move_shape(self, key):
+            if key in KEYS_TRANSLATIONS.keys():
+                move = KEYS_TRANSLATIONS[key]
+                self.shape.translate(move)
+            elif key in KEYS_ROTATIONS.keys():
+                move = KEYS_ROTATIONS[key]
+                self.shape.rotate(move)
 
     def check_shape_landed(self):
-        for rc in self.rows.coords:
-            for tc in self.shape.coords:
-                if tc[0] == rc[0] and tc[1] == rc[1]:
-                    self.move_shape("n")
-                    return True
-                    
-        
-    def get_new_shape(self):
-        if self.shapes_type == "r":
-            rel_coord = random.sample(ALL_COORDS, 4)
-            self.shape = Shape(rel_coord)
-        elif self.shapes_type == "a":
-            self.shape = Shape(copy.deepcopy(LTTR_COORD[self.next_letter]))
-            self.next_letter = random.choice(LTTR_COORD_KEYS)
-        else:
-            self.shape = Shape(copy.deepcopy(LTTR_COORD[self.next_letter]))
-            self.next_letter = random.choice(NORM_LTTR_COORD_KEYS)
-            
-    def move_shape(self, key):
-        if key in KEYS_TRANSLATIONS.keys():
-            move = KEYS_TRANSLATIONS[key]
-            self.shape.translate(move)
-        elif key in KEYS_ROTATIONS.keys():
-            move = KEYS_ROTATIONS[key]
-            #print("DEBUG: move", move)
-            self.shape.rotate(move)
+            for rc in self.rows.coords:
+                for tc in self.shape.coords:
+                    if tc[0] == rc[0] and tc[1] == rc[1]:
+                        self.move_shape("e")
+                        return True
 
     def add_shape_to_rows(self):
         self.rows.update_coords(self.shape.coords)
@@ -300,64 +178,82 @@ class Blocks(object):
             self.complete_row = []
             
         self.rows.coords = new_coords
-    
+
+    def get_new_shape(self):
+        self.shape = Shape(copy.deepcopy(LTTR_COORD[self.next_letter]))
+        self.next_letter = random.choice(NORM_LTTR_COORD_KEYS)
+
+    def update_matrix(self):
+
+        self.matrix = copy.deepcopy(MATRIX)
+                
+        for coord in self.shape.coords:
+
+            x = coord[0]
+            y = coord[1]
+            if x in RANGE_SPACES and y in RANGE_ROWS:
+                self.matrix[y][x] = "O"
+
+        for coord in self.rows.coords:
+
+            x = coord[0]
+            y = coord[1]
+
+            if x in RANGE_SPACES and y in RANGE_ROWS:
+                self.matrix[y][x] = "H"
+
+        for coord in self.complete_row:
+
+            x = coord[0]
+            y = coord[1]
+            if x in RANGE_SPACES and y in RANGE_ROWS:
+                self.matrix[y][x] = "+"
+            
+        self.print_matrix()
+        
+    def print_matrix(self):
+        print("Score:", self.score,"Next:", self.next_letter)
+        for y in range(N_ROWS):
+            row_str ="                " +  "".join(self.matrix[N_ROWS - 1 - y])
+            print(row_str)
 
     def run(self):
         key = "x"
-        ctr = 1
+        ctr = 0
+        self.get_new_shape()
+        time1 = datetime.now()
         while key != "q":
-            #os.system(CLEAR)
-            self.update_matrix()
-            print("        Level", self.level,"Score:", self.score,"Next:", self.next_letter)
-        
-            if  key != "w":
-                if os.name != "nt" or self.mode == True or ctr % 2 == 0 or key == "x":
-                    time.sleep( (11 - self.level) * 0.05)
-                    key = getch(self.mode)
-                    if key == "q":
-                        break
-                else:
-                    key = "x"           
-
             self.move_shape(key)   
-
             if self.check_shape_landed():
                 self.add_shape_to_rows()
                 self.remove_full_rows()
                 self.get_new_shape()
                 key = "x"
                 self.score += 1
-                if self.level < 10:
-                    self.level = (self.score + 40) // 40
 
+            self.update_matrix()
+            if key != "w":
+                if ctr % 2 == 0:
+                    key = getch()
+                else:
+                    if time2 > 0.5:
+                        key = "x"
+                    else:
+                        key = "n"
             ctr += 1
-
-# Tests
-def test(args):
-    self = Blocks(args)
-    self.run()
+            time2 = (datetime.now() - time1).total_seconds()
+            time1 = datetime.now()
     
 # Main Function
 def main(args):
-    if args.test == True:
-        test(args)
-    else:
-        ch = Blocks(args)
-        ch.run()
+    print("INFO. Instructions:", INSTRUCTIONS)
+    ch = Blocks(args)
+    ch.run()
 
 # Command-line Execution
 if __name__=="__main__":
-    #args
-    parser = argparse.ArgumentParser(description="ch")
-    parser.add_argument("-a", "--automate", action="store_true", help="automate")
-    parser.add_argument("-v", "--verbose", action="store_true", help="verbose")
-    parser.add_argument("-t", "--test", action="store_true", help="test")
-    parser.add_argument("-s", "--shapes_type", default = "n", type=str, help="shapes_types. n:normal, a:additional,r:random")
-    parser.add_argument("-l", "--level", default = 1, type = int, help="level. 1 - 10")
-    parser.add_argument("-m", "--mode", action="store_true", help="mode:false=step,true=continous")
-
+    parser = argparse.ArgumentParser(description="Blocks" + INSTRUCTIONS)
     args = parser.parse_args()
-    print(args)
     main(args)
     
 

@@ -19,64 +19,107 @@ procedure Blocks is
 
 
    type Float_Array is array (0 .. 3) of Float;
+   
 
    -- ------CONSTANTS--------
-   Instructions : String := "a:left,d:right,w:drop,x:down,k:cw,l OR s:cw,";
+   Instructions : constant String := "a:left,d:right,w:drop,x:down,k:cw,l OR s:cw,";
    Rtn : Integer := 0;
-   Shape_Coord_I : Shape_Coord := ((0,1), (0,0), (0,-1), (0,-2));
-   Shape_Coord_J : Shape_Coord := ((0,1), (0,0), (0,-1), (-1,-1));
-   Shape_Coord_L : Shape_Coord := ((0,1), (0,0), (0,-1), ( 1,-1));
-   Shape_Coord_S : Shape_Coord := ((-1,0), (0,0), (0,1), (1,1));
-   Shape_Coord_Z : Shape_Coord := ((-1,1), (0,0), (0,1), (1,0));
-   Shape_Coord_O : Shape_Coord := ((1,0), (0,0), (0, 1), ( 1,1));
-   Shape_Coord_T : Shape_Coord := ((-1,0), (0,0), (1,0), (0,1));
+   Shape_Coord_I : constant Shape_Coord := ((0,1), (0,0), (0,-1), (0,-2));
+   Shape_Coord_J : constant Shape_Coord := ((0,1), (0,0), (0,-1), (-1,-1));
+   Shape_Coord_L : constant Shape_Coord := ((0,1), (0,0), (0,-1), ( 1,-1));
+   Shape_Coord_S : constant Shape_Coord := ((-1,0), (0,0), (0,1), (1,1));
+   Shape_Coord_Z : constant Shape_Coord := ((-1,1), (0,0), (0,1), (1,0));
+   Shape_Coord_O : constant Shape_Coord := ((1,0), (0,0), (0, 1), ( 1,1));
+   Shape_Coord_T : constant Shape_Coord := ((-1,0), (0,0), (1,0), (0,1));
 
-   Lttrs : String := "IJLSZOT";
+   Lttrs : constant String := "IJLSZOT";
 
-   Up : Coord := (0,1);
-   Up : Coord := (0,1);
-   Up : Coord := (0,1);
-   Up : Coord := (0,1);
+   Up : constant Coord := (0,1);
+   Down : constant Coord := (0,-1);
+   Left : constant Coord := (-1,0);
+   Right : constant Coord := (1, 0);
 
+   Space : Character := '.';
+   N_Spaces : constant Integer := 10;
+   Range_Spaces : constant array(0 .. 9) of Integer := (0,1,2,3,4,5,6,7,8,9);
+   Block : constant Character := 'O';
+   N_Rows : constant Integer := 20;
+   
+   Matrix_Field : constant array(0 .. 19, 0 .. 9) of Character := (others => (others => Space));
+   Range_Rows : constant array(0 .. 19) of Integer:= (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19);
+   
    -- -------FUNCTIONS -----------
+   function Rotation_CW(Input_Coord : Coord) return Coord is
+      New_Coord : Coord;
+   begin
+      New_Coord.X := Input_Coord.Y;
+      New_Coord.Y := -1 * Input_Coord.Y;
+      return New_Coord;
+   end Rotation_CW;
+
+   function Rotation_CCW(Input_Coord : Coord) return Coord is
+      New_Coord : Coord;
+   begin
+      New_Coord.X := -1 * Input_Coord.Y;
+      New_Coord.Y := Input_Coord.Y;
+      return New_Coord;
+   end Rotation_CCW;
+
+   -- -------PACKAGES -----------
+   package Shape is
+      Rel_Coords : Coord;
+      Coords : Coord;
+      Ctr : Integer;
+      function Init return Integer;
+      function Update_Coords return Integer;
+      function Rotate return Integer;
+      function Translate return Integer;
+   end Shape;
+
+   package body Shape is
+      Rtn : Integer := 0;
+      function Init return Integer is
+         Rtn : Integer := 0;
+      begin
+         Put_Line("DEBUG.Shape_Init");
+         return Rtn;
+      end Init;
+
+      function Update_Coords return Integer is
+         Rtn : Integer := 0;
+      begin
+         Put_Line("DEBUG.Shape_Update_Coords");
+         return Rtn;
+      end Update_Coords;
+
+      function Rotate return Integer is
+         Rtn : Integer := 0;
+      begin
+         Put_Line("DEBUG.Shape_Rotate");
+         return Rtn;
+      end Rotate;
+
+      function Translate return Integer is
+         Rtn : Integer := 0;
+      begin
+         Put_Line("DEBUG.Shape_Translate");
+         return Rtn;
+      end Translate;
+
+   end Shape;
 
    -- ------Rows-----------
-
-   function Rows_Update_Coords return Integer is
+   package Rows is
       Rtn : Integer := 0;
-   begin
-      Put_Line("DEBUG.Rows_Update_Coords");
-      return Rtn;
-   end Rows_Update_Coords;
-
-   -- ------Shape---------
-   function Shape_Init return Integer is
-      Rtn : Integer := 0;
-   begin
-      Put_Line("DEBUG.Shape_Init");
-      return Rtn;
-   end Shape_Init;
-
-   function Shape_Update_Coords return Integer is
-      Rtn : Integer := 0;
-   begin
-      Put_Line("DEBUG.Shape_Update_Coords");
-      return Rtn;
-   end Shape_Update_Coords;
-
-   function Shape_Rotate return Integer is
-      Rtn : Integer := 0;
-   begin
-      Put_Line("DEBUG.Shape_Rotate");
-      return Rtn;
-   end Shape_Rotate;
-
-   function Shape_Translate return Integer is
-      Rtn : Integer := 0;
-   begin
-      Put_Line("DEBUG.Shape_Translate");
-      return Rtn;
-   end Shape_Translate;
+      function Update_Coords return Integer;
+   end Rows;
+   package body Rows is
+      function Update_Coords return Integer is
+      begin
+         Put_Line("DEBUG.Rows_Update_Coords");
+         return Rtn;
+      end Update_Coords;
+   end Rows;
 
    -- ----------Main Functions---------------
    function Get_New_Shape return Integer is

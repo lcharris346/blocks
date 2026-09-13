@@ -19,9 +19,7 @@ LTTR_COORD = {
     "T":[[-1,0], [0,0], [1, 0], [ 0, 1]],
 }
 NORM_LTTR_COORD_KEYS = "IJLSZOT"
-CARD = {
-    "up": [0,1], "down": [0, -1],"right": [1,0], "left": [-1,0],
-}
+
 SPACE = "."
 
 N_SPACES = 10
@@ -33,26 +31,7 @@ N_ROWS = 20
 RANGE_ROWS = range(N_ROWS)
 MATRIX = [copy.deepcopy(ROW) for x in range(N_ROWS)]
 
-KEYS_TRANSLATIONS = {
-    "a": "left",
-    "l": "left",
 
-    "d": "right",
-    "'": "right",
-    
-    "w": "down",
-    "p": "down",
-
-    "x": "down",
-    "/": "down",
-
-    "u": "up"
-}
-KEYS_ROTATIONS = {
-    "s": "cw",
-
-    ";": "ccw",
-}
 # Functions
 
 def unit_rotation_cw(xy):
@@ -83,7 +62,7 @@ def getch():
             
             # Decode bytes to a string
             key_char = key.decode('utf-8', errors='ignore')
-            #print(f"INFO. You pressed: {key_char} (Raw: {key})")
+
             break
     
     return key_char.lower()
@@ -96,7 +75,6 @@ class Shape(object):
         self.coords = []
         self.center_coord = []
 
-
 ######################################## MAIN CLASS  ########################################
 class Blocks(object):
     
@@ -104,7 +82,7 @@ class Blocks(object):
         self.score = 0
         self.rows = copy.deepcopy(MATRIX);
         self.shape = Shape()
-        self.next_letter = "I" # random.choice(NORM_LTTR_COORD_KEYS)
+        self.next_letter = random.choice(NORM_LTTR_COORD_KEYS)
         
 
     def update_coords(self):
@@ -113,30 +91,36 @@ class Blocks(object):
             self.shape.coords[ii][0] = self.shape.center_coord[0] + self.shape.relative_coords[ii][0]
             self.shape.coords[ii][1] = self.shape.center_coord[1] + self.shape.relative_coords[ii][1]
 
-    def rotate(self, _dir):
-            if _dir == "cw":
+    def rotate(self, rotation):
+            if rotation == "cw":
                 for ii, rel_coord in enumerate(self.shape.relative_coords):
                     self.shape.relative_coords[ii] = unit_rotation_cw(self.shape.relative_coords[ii])
-            elif _dir == "ccw":
+            elif rotation == "ccw":
                 for ii, rel_coord in enumerate(self.shape.relative_coords):
                     self.shape.relative_coords[ii] = unit_rotation_ccw(self.shape.relative_coords[ii])
     
             self.update_coords()
     
-    def translate(self, card):
-        if card in KEYS_TRANSLATIONS.values():
-            self.shape.center_coord[0] += CARD[card][0]
-            self.shape.center_coord[1] += CARD[card][1]
+    def translate(self, displacement):
+        self.shape.center_coord[0] += displacement[0]
+        self.shape.center_coord[1] += displacement[1]
 
         self.update_coords()
 
     def move_shape(self, key):
-            if key in KEYS_TRANSLATIONS.keys():
-                move = KEYS_TRANSLATIONS[key]
-                self.translate(move)
-            elif key in KEYS_ROTATIONS.keys():
-                move = KEYS_ROTATIONS[key]
-                self.rotate(move)
+            if   key in ("w","p","x","/"):
+                self.translate([ 0,-1]) # down
+            elif key == "u":
+                self.translate([ 0, 1]) # up
+            elif key in ("a","l"):
+                self.translate([-1, 0]) # left
+            elif key in ("d","'"):
+                self.translate([ 1, 0]) # right
+            elif key == "s":
+                self.rotate("cw")
+            elif key == ";":
+                self.rotate("ccw")
+
 
     def shape_touched_down(self):
         shape_touched_down = False
@@ -150,13 +134,20 @@ class Blocks(object):
         return shape_touched_down
 
     def update_rows(self):
+
+        rows_full = False
         
         for coord in self.shape.coords:
             x,y = coord
             self.rows[y][x] = ROWS_BLOCK
+            if y > 16:
+                 rows_full = True
+
+
+        return rows_full
         
     def remove_full_rows(self):
-        rows_dict = {}
+
         new_y = 0
         complete_row = [ROWS_BLOCK for x in RANGE_SPACES]
         new_rows = copy.deepcopy(self.rows)
@@ -210,12 +201,15 @@ class Blocks(object):
             self.move_shape(key)   
 
             if self.shape_touched_down():
-                # Add shape to rows
-                self.update_rows()
+                self.score += 1
+                rows_full = self.update_rows()
+                if rows_full:
+                    print("WARNING. Rows are full.")
+                    break
                 self.remove_full_rows()
                 self.get_new_shape()
                 key = "x"
-                self.score += 1
+                
 
             self.print_matrix()
             
@@ -234,8 +228,9 @@ class Blocks(object):
             time_diff = (datetime.now() - time1).total_seconds()
             time1 = datetime.now()
 
-            
+        print("INFO. Game Ends")
 
+        
 # Main Function
 def main(args):
     print("INFO. Instructions:", INSTRUCTIONS)
